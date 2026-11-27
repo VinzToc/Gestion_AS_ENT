@@ -1,18 +1,17 @@
-/* textes-legaux.js — mentions affichées dans la rubrique « Autorisations » du formulaire.
-   ⚠ À REMPLACER par le texte OFFICIEL de la fiche d'inscription papier 2026-2027 de l'AS
-   (copier-coller chaque mention entre les guillemets ; les retours à la ligne s'écrivent \n).
-   Tant que ce fichier n'est pas complété, l'élève voit seulement le renvoi à la fiche papier. */
+/* textes-legaux.js — textes PAR DÉFAUT affichés sous « Lire le texte ».
+   Chaque établissement peut mettre les siens dans Gestion AS → Données → Réglages de l'AS → « Mentions légales » :
+   ils sont alors transmis aux élèves par le lien Mon AS. Ces textes par défaut sont volontairement neutres. */
 window.TEXTES = {
   droitImage: {
     titre: 'Droit à l’image',
-    texte: 'Texte officiel de la mention « droit à l’image » : voir la fiche d’inscription papier de l’AS (à copier ici).'
+    texte: 'Le texte de cette mention est fixé par l’association sportive de ton établissement (voir la fiche d’inscription). Demande-le à ton professeur d’EPS avant de signer.'
   },
   donnees: {
     titre: 'Conditions d’utilisation des données à caractère personnel',
-    texte: 'Texte officiel de la mention sur les données à caractère personnel (UNSS) : voir la fiche d’inscription papier de l’AS (à copier ici).'
+    texte: 'Les informations de cette fiche sont conservées uniquement sur cet appareil et remises à ton professeur par QR code ou dossier PDF. Les conditions détaillées d’utilisation des données (UNSS, association sportive) sont fixées par ton établissement : demande-les à ton professeur d’EPS avant de signer.'
   },
   assurance: {
     titre: 'Mention sur les assurances',
-    texte: 'Texte officiel de la mention sur les assurances (licence UNSS) : voir la fiche d’inscription papier de l’AS (à copier ici).'
+    texte: 'La mention sur les assurances liées à la licence est fixée par l’association sportive de ton établissement. Demande-la à ton professeur d’EPS avant de signer.'
   }
 };

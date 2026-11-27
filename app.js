@@ -9,7 +9,11 @@ $('tx-droit').textContent=TEXTES.droitImage.texte;$('tx-donnees').textContent=TE
 const CFGK='mon_as_cfg_v1';
 function cfgStock(){try{return JSON.parse(localStorage.getItem(CFGK)||'null')||{}}catch(e){return{}}}
 const escA=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-function appliquerCfg(){A.setConfig(cfgStock());
+const TEXTES_DEF=JSON.parse(JSON.stringify(TEXTES));
+function textesLegaux(){const l=A.cfgClean(cfgStock()).leg||{};
+ TEXTES.droitImage.texte=l.d||TEXTES_DEF.droitImage.texte;TEXTES.donnees.texte=l.p||TEXTES_DEF.donnees.texte;TEXTES.assurance.texte=l.a||TEXTES_DEF.assurance.texte;
+ $('tx-droit').textContent=TEXTES.droitImage.texte;$('tx-donnees').textContent=TEXTES.donnees.texte;$('tx-assurance').textContent=TEXTES.assurance.texte}
+function appliquerCfg(){A.setConfig(cfgStock());textesLegaux();
  const pris=[...form.querySelectorAll('input[name=act]:checked')].map(x=>x.value);
  $('chips').innerHTML=A.ACT_AS.map(a=>`<label class="chip"><input type="checkbox" name="act" value="${escA(a)}"><span>${escA(a)}</span></label>`).join('');
  form.querySelectorAll('input[name=act]').forEach(c=>{c.checked=pris.includes(c.value)});
