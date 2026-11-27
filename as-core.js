@@ -55,7 +55,7 @@ function manques(f) {
   need('qualite', 'Qualité du responsable légal', clean(f.qualite));
   need('respNom', 'Nom et prénom du responsable légal', clean(f.respNom).length >= 3);
   need('tel', 'Téléphone du responsable (10 chiffres)', telOk(f.tel));
-  need('mail', 'Adresse e-mail du responsable (valide)', mailOk(f.mail));
+  need('mail', 'E-mail du responsable : format invalide (champ facultatif)', !clean(f.mail) || mailOk(f.mail));
   need('adresse', 'Adresse du responsable', clean(f.adresse).length >= 8);
   need('acts', 'Au moins une activité', Array.isArray(f.acts) && f.acts.length > 0);
   need('compet', 'Réponse « compétitions UNSS »', f.compet === '0' || f.compet === '1');
