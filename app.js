@@ -101,7 +101,7 @@ function resume(f){
 function montre(f,ds){
  const d={nom:f.nom,prenom:f.prenom,classe:f.classe,licence:f.licence,jo:f.jo};cur={f,d,ds};
  $('saisie').hidden=true;$('fait').hidden=false;$('faitDate').textContent='Inscription enregistrée le '+A.frDate(ds)+'.';resume(f);
- const cv=A.cardCanvas(document,d,{logo},1011),dst=$('cardcv');dst.width=cv.width;dst.height=cv.height;dst.getContext('2d').drawImage(cv,0,0);
+ const cv=A.cardCanvas(document,d,{logo,photo},1011),dst=$('cardcv');dst.width=cv.width;dst.height=cv.height;dst.getContext('2d').drawImage(cv,0,0);
  $('carteVide').hidden=true;$('carteOk').hidden=false;
  const qc=$('qrIns');qc.width=qc.height=560;A.drawQR(qc.getContext('2d'),A.makeQR(A.encodeInscription(f,ds),'M'),0,0,560);
  cotisMaj();etat()}
@@ -112,6 +112,17 @@ async function plein(carte){if(!cur)return;const c=$('qrBig');c.width=c.height=9
  $('qrNom').textContent=A.tc(cur.f.prenom)+' '+cur.f.nom.toUpperCase()+' · '+cur.f.classe;$('dQr').showModal();
  try{wake=await navigator.wakeLock.request('screen')}catch(e){}}
 $('qrClose').onclick=()=>$('dQr').close();$('dQr').addEventListener('close',()=>{try{wake&&wake.release()}catch(e){}wake=null});
+/* ---- photo sur la carte (stockée uniquement sur l'appareil) ---- */
+const PK='mon_as_photo_v1';let photo=null;
+function photoUi(){$('photoLb').textContent=photo?'Changer ma photo':'Ajouter ma photo';$('photoDel').hidden=!photo}
+function photoCharge(){try{const u=localStorage.getItem(PK);if(u){const i=new Image();i.onload=()=>{photo=i;photoUi();if(cur)montre(cur.f,cur.ds)};i.src=u}}catch(e){}}
+$('photoIn').onchange=e=>{const fl=e.target.files[0];e.target.value='';if(!fl)return;const u=URL.createObjectURL(fl),i=new Image();
+ i.onload=()=>{const W=240,H=300,c=document.createElement('canvas');c.width=W;c.height=H;const k=Math.max(W/i.width,H/i.height),sw=W/k,sh=H/k;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(i,(i.width-sw)/2,(i.height-sh)/2,sw,sh,0,0,W,H);URL.revokeObjectURL(u);
+  const d=c.toDataURL('image/jpeg',.85);try{localStorage.setItem(PK,d)}catch(er){}const p=new Image();p.onload=()=>{photo=p;photoUi();if(cur)montre(cur.f,cur.ds)};p.src=d};
+ i.onerror=()=>URL.revokeObjectURL(u);i.src=u};
+$('photoDel').onclick=()=>{try{localStorage.removeItem(PK)}catch(e){}photo=null;photoUi();if(cur)montre(cur.f,cur.ds)};
+photoCharge();
 $('go').onclick=()=>cur?plein():creer();$('showCarte').onclick=()=>plein(true);$('manqueOk').onclick=()=>$('dlgManque').close();
 
 $('dlCartePdf').onclick=()=>{if(!cur)return;const P=new jspdf.jsPDF({unit:'mm',format:'a4'});
@@ -133,7 +144,7 @@ $('dlDossier').onclick=()=>{if(!cur)return;const f=cur.f,P=new jspdf.jsPDF({unit
 
 
 $('efface').onclick=async()=>{if(!confirm('Effacer toutes tes données de cet appareil ? Ton inscription devra être refaite.'))return;
- try{localStorage.removeItem(DK);localStorage.removeItem(FK)}catch(e){}try{await ELEVE.supprimer()}catch(e){}location.reload()};
+ try{localStorage.removeItem(DK);localStorage.removeItem(FK);localStorage.removeItem(PK)}catch(e){}try{await ELEVE.supprimer()}catch(e){}location.reload()};
 
 /* ---- Démarrage ---- */
 appliquerCfg();

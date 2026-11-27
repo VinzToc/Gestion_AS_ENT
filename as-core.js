@@ -278,15 +278,19 @@ function drawCard(ctx, W, H, d, imgs) {
   fit('ASSOCIATION SPORTIVE', W - tx - 24 * S, 46 * S, '900'); ctx.fillText('ASSOCIATION SPORTIVE', tx, 66 * S);
   const lieu = [ETAB, VILLE].filter(Boolean).join(' · '); if (lieu) { fit(lieu, W - tx - 24 * S, 26 * S, '600'); ctx.fillText(lieu, tx, 104 * S); }
   fit('Carte d’adhérent ' + SAISON, W - tx - 24 * S, 28 * S, '800'); ctx.fillText('Carte d’adhérent ' + SAISON, tx, 142 * S);
-  const qrBox = 300 * S, qx = W - qrBox - 34 * S, qy = 192 * S, maxW = qx - 52 * S;
+  const qrBox = 300 * S, qx = W - qrBox - 34 * S, qy = 192 * S, maxW0 = qx - 52 * S;
+  const ph = imgs && imgs.photo && imgs.photo.width ? imgs.photo : null, off = ph ? 214 * S : 0, maxW = maxW0 - off, X0 = 40 * S + off;
+  if (ph) { const pw = 174 * S, phh = 218 * S, px = 40 * S, py = 190 * S, k = Math.max(pw / ph.width, phh / ph.height), sw = pw / k, sh = phh / k;
+    ctx.save(); rr(px, py, pw, phh, 14 * S); ctx.clip(); ctx.drawImage(ph, (ph.width - sw) / 2, (ph.height - sh) / 2, sw, sh, px, py, pw, phh); ctx.restore();
+    ctx.strokeStyle = '#d9d4c4'; ctx.lineWidth = 3 * S; rr(px, py, pw, phh, 14 * S); ctx.stroke(); }
   const nom = clean(d.nom).toUpperCase(), pre = tc(clean(d.prenom));
-  ctx.fillStyle = '#1c1a15'; fit(nom, maxW, 60 * S, '900'); ctx.fillText(nom, 40 * S, 248 * S);
-  ctx.fillStyle = '#3a362c'; fit(pre, maxW, 46 * S, '600'); ctx.fillText(pre, 40 * S, 304 * S);
-  ctx.fillStyle = '#d9720f'; fit(clean(d.classe), maxW, 48 * S, '800'); ctx.fillText(clean(d.classe), 40 * S, 366 * S);
+  ctx.fillStyle = '#1c1a15'; fit(nom, maxW, 60 * S, '900'); ctx.fillText(nom, X0, 248 * S);
+  ctx.fillStyle = '#3a362c'; fit(pre, maxW, 46 * S, '600'); ctx.fillText(pre, X0, 304 * S);
+  ctx.fillStyle = '#d9720f'; fit(clean(d.classe), maxW, 48 * S, '800'); ctx.fillText(clean(d.classe), X0, 366 * S);
   let ly = 428 * S;
-  if (clean(d.licence)) { ctx.fillStyle = '#1c1a15'; fit('Licence UNSS : ' + clean(d.licence), maxW, 32 * S, '700'); ctx.fillText('Licence UNSS : ' + clean(d.licence), 40 * S, ly); }
-  else { ctx.fillStyle = '#8a8472'; fit('Licence UNSS : en attente', maxW, 30 * S, '600'); ctx.fillText('Licence UNSS : en attente', 40 * S, ly); }
-  if (clean(d.jo)) { ly += 42 * S; ctx.fillStyle = '#1c1a15'; fit('Jeune officiel : ' + clean(d.jo), maxW, 30 * S, '700'); ctx.fillText('Jeune officiel : ' + clean(d.jo), 40 * S, ly); }
+  if (clean(d.licence)) { ctx.fillStyle = '#1c1a15'; fit('Licence UNSS : ' + clean(d.licence), maxW0, 32 * S, '700'); ctx.fillText('Licence UNSS : ' + clean(d.licence), 40 * S, ly); }
+  else { ctx.fillStyle = '#8a8472'; fit('Licence UNSS : en attente', maxW0, 30 * S, '600'); ctx.fillText('Licence UNSS : en attente', 40 * S, ly); }
+  if (clean(d.jo)) { ly += 42 * S; ctx.fillStyle = '#1c1a15'; fit('Jeune officiel : ' + clean(d.jo), maxW0, 30 * S, '700'); ctx.fillText('Jeune officiel : ' + clean(d.jo), 40 * S, ly); }
   if (d.qr) drawQR(ctx, d.qr, qx, qy, qrBox);
   ctx.fillStyle = '#8a8472'; ctx.font = '600 ' + 22 * S + 'px ' + F; ctx.fillText('À présenter à chaque séance', 40 * S, H - 26 * S);
   const g2 = ctx.createLinearGradient(0, 0, W, 0); g2.addColorStop(0, '#0a4fd0'); g2.addColorStop(1, '#ff7a14'); ctx.fillStyle = g2; ctx.fillRect(0, H - 12 * S, W, 12 * S);
