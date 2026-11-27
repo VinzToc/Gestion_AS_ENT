@@ -90,8 +90,3 @@ t('ASI3 : liste d’activités différente → activités non lues, avertissemen
  const d=A.decodeInscription(c);assert(d.avertissement.length>0);assert(!('Activites' in d.record))});
 t('format JSON ASI2 (version précédente) reconnu par le professeur',()=>{const c=JSON.stringify(['ASI2','Dupont','Léa','2NDE','2010-04-12','Amiens','F','M','Anne','0612345678','a@b.fr','Futsal ; Badminton',1,0,'',1,'','','2026-11-27']);assert.strictEqual(A.typeCode(c),'inscription');assert.strictEqual(A.decodeInscription(c).record.Mail_responsable,'a@b.fr')});
 console.log(ok+' tests réussis (total)');
-console.log('Mentions légales paramétrables');
-t('textes légaux : transmis par le lien, balises retirées, plafonnés à 1 500 caractères',()=>{const c=A.cfgClean({leg:{d:'Texte <b>gras</b>\r\nligne 2',p:'x'.repeat(2000),a:''}});assert.strictEqual(c.leg.d,'Texte gras\nligne 2');assert.strictEqual(c.leg.p.length,1500);assert(!('a' in c.leg));
- const r=A.cfgFromParam(A.cfgToParam(c,null));assert.strictEqual(r.cfg.leg.d,'Texte gras\nligne 2')});
-t('sans mentions légales : aucune clé leg',()=>assert(!('leg' in A.cfgClean({etab:'X'}))));
-console.log(ok+' tests réussis (total 2)');

@@ -21,13 +21,10 @@ const oui = v => v ? 'Oui' : 'Non';
 const clean = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 const txt = (s, n) => clean(s).replace(/[<>]/g, '').slice(0, n);
 /* Nettoie une configuration venant d'un lien ou d'un fichier (jamais de confiance : textes courts, sans balises). */
-/* Texte long (mentions légales) : retours à la ligne conservés, balises retirées, 1 500 caractères maximum. */
-const longTxt = (s, n) => String(s == null ? '' : s).replace(/\r/g, '').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, n);
 function cfgClean(c) {
   c = c && typeof c === 'object' ? c : {}; const o = {};
   const e = txt(c.etab, 80), v = txt(c.ville, 50), s = clean(c.saison), l = clean(c.logo);
   const a = Array.isArray(c.acts) ? [...new Set(c.acts.map(x => txt(x, 40)).filter(Boolean))].slice(0, 30) : [];
-  const lg = {}; ['d', 'p', 'a'].forEach(k => { const t = longTxt(c.leg && c.leg[k], 1500); if (t) lg[k] = t; }); if (Object.keys(lg).length) o.leg = lg;
   if (e) o.etab = e; if (v) o.ville = v; if (/^\d{4}-\d{4}$/.test(s)) o.saison = s; if (a.length) o.acts = a; if (Object.prototype.hasOwnProperty.call(LOGOS, l)) o.logo = l;
   return o;
 }
@@ -39,11 +36,11 @@ const b64u = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').repl
 const unb64u = p => decodeURIComponent(escape(atob(String(p).replace(/-/g, '+').replace(/_/g, '/'))));
 /* Paramètre d'adresse « ?cfg= » : réglages + lien de paiement (u, m) */
 function cfgToParam(c, cotis) {
-  const k = cfgClean(c), o = { e: k.etab, v: k.ville, s: k.saison, a: k.acts, l: k.logo, t: k.leg }; if (cotis && cotis.u) { o.u = cotis.u; if (cotis.m) o.m = cotis.m; }
+  const k = cfgClean(c), o = { e: k.etab, v: k.ville, s: k.saison, a: k.acts, l: k.logo }; if (cotis && cotis.u) { o.u = cotis.u; if (cotis.m) o.m = cotis.m; }
   Object.keys(o).forEach(x => { if (o[x] == null) delete o[x]; }); return b64u(JSON.stringify(o));
 }
 function cfgFromParam(p) {
-  const o = JSON.parse(unb64u(p)); return { cfg: cfgClean({ etab: o.e, ville: o.v, saison: o.s, acts: o.a, logo: o.l, leg: o.t }), cotis: { u: String(o.u || ''), m: String(o.m || '').slice(0, 30) } };
+  const o = JSON.parse(unb64u(p)); return { cfg: cfgClean({ etab: o.e, ville: o.v, saison: o.s, acts: o.a, logo: o.l }), cotis: { u: String(o.u || ''), m: String(o.m || '').slice(0, 30) } };
 }
 
 /* ---------- Dates ---------- */
