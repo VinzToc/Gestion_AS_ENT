@@ -1,6 +1,5 @@
-importScripts('version.js');
-const C='as-appel-v'+APP_VERSION,F=['version.js','footer.js','nouveautes.js','nouveautes.json','./','index.html','style.css','app.js','manifest.json','confidentialite.html','contact.html','logo.png','logo-transparent.png','icon-192.png',
-'lib/qrcode-generator-1.4.4.js','lib/jsQR-1.4.0.js','lib/jspdf-2.5.1.umd.min.js'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(u=>c.add(u).catch(()=>0)))).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>clients.claim())));
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request,{cache:'no-cache'}).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request,{ignoreSearch:true})))});
+const V='mon-as-v1.0.0';
+const FILES=['./','index.html','app.js','style.css','as-core.js','eps-core.js','eleve-core.js','textes-legaux.js','version.js','confidentialite.html','manifest.webmanifest','img/logo-app.png','img/logo-as.png','icons/icon-192.png','icons/icon-512.png','lib/qrcode-generator-1.4.4.js','lib/jspdf-2.5.1.umd.min.js'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(V).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});
