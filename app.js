@@ -47,10 +47,11 @@ document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const id=b.d
 
 /* ---- Cotisation en ligne (lien saisi par le professeur) ---- */
 const CK='mon_as_cotis_v1';
-function cotisOk(c){return c&&typeof c.u==='string'&&/^https:\/\/[^\s]+$/i.test(c.u)}
+function cotisHote(u){try{const x=new URL(u);return x.protocol==='https:'&&!x.username&&!x.password&&x.hostname.includes('.')?x.hostname.replace(/^www\./,''):''}catch(e){return ''}}
+function cotisOk(c){return !!(c&&typeof c.u==='string'&&c.u.length<2000&&cotisHote(c.u))}
 function cotisLire(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');return cotisOk(c)?c:null}catch(e){return null}}
 function cotisMaj(){const c=cotisLire(),p=$('pay'),h=$('payHint');p.hidden=!c;h.hidden=!c;
- if(c){p.href=c.u;p.textContent='💳 Payer ma cotisation en ligne'+(c.m?' ('+c.m+')':'');h.textContent='Le paiement se fait sur un site sécurisé extérieur à cette application. Garde ta confirmation de paiement.'}}
+ if(c){p.href=c.u;p.textContent='💳 Payer ma cotisation en ligne'+(c.m?' ('+c.m+')':'');h.textContent='Le paiement se fait sur un site extérieur à cette application : '+cotisHote(c.u)+'. Vérifie auprès de ton professeur que c’est bien l’adresse de l’AS avant de payer. Garde ta confirmation de paiement.'}}
 async function cotisInit(){
  let par=null;try{par=new URLSearchParams(location.search).get('cotis')}catch(e){}
  if(par){try{const o=JSON.parse(decodeURIComponent(escape(atob(par.replace(/-/g,'+').replace(/_/g,'/')))));const c={u:String(o.u||''),m:String(o.m||'').slice(0,30)};
