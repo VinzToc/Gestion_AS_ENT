@@ -1,1 +1,4 @@
-{"cotisation":{"url":"","montant":""}}
+{
+ "cotisation": {"url": "", "montant": ""},
+ "as": {}
+}

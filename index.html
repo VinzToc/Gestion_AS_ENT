@@ -15,7 +15,7 @@
   <img class="logo" src="img/logo-app.png" alt="Logo de l'Association Sportive">
   <div>
     <h1 class="titre"><span class="t1">Mon</span> <span class="t2">AS</span></h1>
-    <p class="sous">Inscription 2026-2027 · Lycée Romain Rolland</p>
+    <p class="sous" id="sous">Inscription</p>
   </div>
 </header>
 <main>
@@ -29,6 +29,12 @@
       <li>✍️ Deux signatures sont nécessaires : la tienne et celle de ton responsable.</li>
       <li>📲 À la fin, tu montres un QR code (ou tu envoies un fichier) à ton professeur.</li>
     </ul>
+  </section>
+
+  <section class="card" id="cardEtab" hidden><h2>🏫 Mon AS</h2>
+    <p class="hint" style="margin-top:0">L'AS de ton établissement n'est pas encore réglée sur cet appareil. Demande à ton professeur le <b>lien ou le QR code « Mon AS »</b> de ton AS (il règle tout automatiquement), ou indique ton établissement :</p>
+    <div class="g2"><div class="f"><label for="etabIn">Établissement</label><input type="text" id="etabIn" maxlength="80" placeholder="ex : Collège Jean Moulin"></div>
+    <div class="f"><label for="villeIn">Ville</label><input type="text" id="villeIn" maxlength="50"></div></div>
   </section>
 
   <section class="card"><h2><span class="n">1</span>Moi</h2>
@@ -61,7 +67,7 @@
       <div class="f" data-k="compet"><span class="lb">Je souhaite participer aux compétitions UNSS</span>
         <div class="yn"><label><input type="radio" name="compet" value="1"><span>Oui</span></label><label><input type="radio" name="compet" value="0"><span>Non</span></label></div></div>
       <div class="f" data-k="handi"><span class="lb">Je pratique en sport partagé / handisport</span>
-        <div class="yn"><label><input type="radio" name="handi" value="1"><span>Oui</span></label><label><input type="radio" name="handi" value="0"><span>Non</span></label></div></div>
+        <div class="yn"><label><input type="radio" name="handi" value="1"><span>Oui</span></label><label><input type="radio" name="handi" value="0"><span>Non</span></label><label class="nspp"><input type="radio" name="handi" value="2"><span>Je ne souhaite pas répondre</span></label></div></div>
     </div>
     <div class="f"><label for="club">Club sportif fréquenté (facultatif)</label><input type="text" id="club"></div>
   </section>

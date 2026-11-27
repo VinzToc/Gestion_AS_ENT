@@ -77,3 +77,5 @@ body{padding-bottom:170px}
 .f>label.ck{display:flex;gap:14px;align-items:flex-start;color:var(--tx);font-size:.92rem;letter-spacing:0;margin-bottom:0}
 .f>label.ck input{width:24px;height:24px;margin:1px 0 0;flex:none}
 .f>label.ck span{flex:1}
+
+.yn .nspp{grid-column:1/-1}

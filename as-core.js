@@ -6,19 +6,42 @@
 (function (root) {
 'use strict';
 
-const SAISON = '2026-2027';
-const ETAB = 'Lycée des métiers Romain Rolland';
-const VILLE = 'Amiens';
-
-/* Activités proposées dans le formulaire d'inscription (ordre alphabétique) */
-const ACT_AS = ['Badminton', 'Basket', 'Basket 3x3', 'Cross country', 'Football', 'Futsal', 'Handball',
-  'Kitesurf / Landkite / Landwing', 'La lycéenne', 'Patinoire', 'Raid multi activités', 'Tennis de table'];
+/* ---------- Configuration de l'AS (établissement, ville, saison, activités, logo) ----------
+   Rien n'est écrit en dur pour un établissement : le professeur règle ces valeurs dans « Gestion AS » (Données → Réglages de l'AS),
+   qui fabrique un lien « Mon AS » les transportant. Valeurs par défaut neutres tant que rien n'est réglé. */
+const ACT_DEFAUT = ['Badminton', 'Basket', 'Cross', 'Danse', 'Escalade', 'Football', 'Futsal', 'Handball', 'Musculation', 'Natation', 'Tennis de table', 'Volley-ball'];
+const LOGOS = { defaut: 'img/logo-app.png', rolland: 'img/logo-as.png' };   // logos fournis avec l'application (clé → fichier)
+const saisonCourante = () => { const d = new Date(), y = d.getFullYear(); return d.getMonth() >= 7 ? y + '-' + (y + 1) : (y - 1) + '-' + y; };
+let SAISON = saisonCourante(), ETAB = '', VILLE = '', LOGO = 'defaut', ACT_AS = ACT_DEFAUT.slice();
 
 const norm = s => (s == null ? '' : String(s)).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const tc = s => String(s || '').toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).trim();
 const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
 const oui = v => v ? 'Oui' : 'Non';
 const clean = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+const txt = (s, n) => clean(s).replace(/[<>]/g, '').slice(0, n);
+/* Nettoie une configuration venant d'un lien ou d'un fichier (jamais de confiance : textes courts, sans balises). */
+function cfgClean(c) {
+  c = c && typeof c === 'object' ? c : {}; const o = {};
+  const e = txt(c.etab, 80), v = txt(c.ville, 50), s = clean(c.saison), l = clean(c.logo);
+  const a = Array.isArray(c.acts) ? [...new Set(c.acts.map(x => txt(x, 40)).filter(Boolean))].slice(0, 30) : [];
+  if (e) o.etab = e; if (v) o.ville = v; if (/^\d{4}-\d{4}$/.test(s)) o.saison = s; if (a.length) o.acts = a; if (Object.prototype.hasOwnProperty.call(LOGOS, l)) o.logo = l;
+  return o;
+}
+function setConfig(c) {
+  c = cfgClean(c); ETAB = c.etab || ''; VILLE = c.ville || ''; SAISON = c.saison || saisonCourante(); LOGO = c.logo || 'defaut';
+  ACT_AS = c.acts && c.acts.length ? c.acts : ACT_DEFAUT.slice(); return c;
+}
+const b64u = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = p => decodeURIComponent(escape(atob(String(p).replace(/-/g, '+').replace(/_/g, '/'))));
+/* Paramètre d'adresse « ?cfg= » : réglages + lien de paiement (u, m) */
+function cfgToParam(c, cotis) {
+  const k = cfgClean(c), o = { e: k.etab, v: k.ville, s: k.saison, a: k.acts, l: k.logo }; if (cotis && cotis.u) { o.u = cotis.u; if (cotis.m) o.m = cotis.m; }
+  Object.keys(o).forEach(x => { if (o[x] == null) delete o[x]; }); return b64u(JSON.stringify(o));
+}
+function cfgFromParam(p) {
+  const o = JSON.parse(unb64u(p)); return { cfg: cfgClean({ etab: o.e, ville: o.v, saison: o.s, acts: o.a, logo: o.l }), cotis: { u: String(o.u || ''), m: String(o.m || '').slice(0, 30) } };
+}
 
 /* ---------- Dates ---------- */
 const pad = n => String(n).padStart(2, '0');
@@ -59,7 +82,7 @@ function manques(f) {
   need('adresse', 'Adresse du responsable', clean(f.adresse).length >= 8);
   need('acts', 'Au moins une activité', Array.isArray(f.acts) && f.acts.length > 0);
   need('compet', 'Réponse « compétitions UNSS »', f.compet === '0' || f.compet === '1');
-  need('handi', 'Réponse « sport partagé / handisport »', f.handi === '0' || f.handi === '1');
+  need('handi', 'Réponse « sport partagé / handisport » (ou « je ne souhaite pas répondre »)', f.handi === '0' || f.handi === '1' || f.handi === '2');
   need('autor', 'Autorisation parentale cochée', f.autor === true);
   need('droitImage', 'Réponse « droit à l’image »', f.droitImage === '0' || f.droitImage === '1');
   need('consentDonnees', 'Données personnelles : lu et pris connaissance', f.consentDonnees === true);
@@ -86,7 +109,7 @@ function toRecord(f, dateSig) {
     Mail_responsable: clean(f.mail).toLowerCase(),
     Activites: sortActs(f.acts || []).join(' ; '),
     Competitions_UNSS: oui(f.compet === '1'),
-    Sport_partage: oui(f.handi === '1'),
+    Sport_partage: f.handi === '2' ? 'Ne souhaite pas répondre' : oui(f.handi === '1'),
     Club: clean(f.club),
     Droit_image: oui(f.droitImage === '1'),
     Autorisation_parentale: oui(f.autor === true),
@@ -99,25 +122,26 @@ function toRecord(f, dateSig) {
 }
 
 /* ---------- Format d'échange compact (QR code « inscription ») ----------
-   Tableau JSON : ["ASI1", nom, prénom, classe, naissance, lieu, sexe F/M, qualité M/P/T, responsable, tel, mail,
-                   masque des activités, compét 0/1, handi 0/1, club, droit image 0/1, licence, jeune officiel, date]
+   Tableau JSON : ["ASI2", nom, prénom, classe, naissance, lieu, sexe F/M, qualité M/P/T, responsable, tel, mail,
+                   activités (noms séparés par « ; »), compét 0/1, handi 0/1/2 (2 = ne souhaite pas répondre), club, droit image 0/1, licence, jeune officiel, date]
+   « ASI1 » (masque binaire des activités, liste fixe) est encore lu.
    Les signatures et l'adresse n'y figurent JAMAIS (elles restent sur l'appareil de l'élève et dans son PDF signé). */
 const QUAL = { 'Mère': 'M', 'Père': 'P', 'Tuteur ou tutrice': 'T' }, QUAL_INV = { M: 'Mère', P: 'Père', T: 'Tuteur ou tutrice' };
 function encodeInscription(f, dateSig) {
-  const mask = (f.acts || []).reduce((s, a) => { const i = ACT_AS.indexOf(a); return i < 0 ? s : s | (1 << i); }, 0);
-  return JSON.stringify(['ASI1', clean(f.nom), clean(f.prenom), clean(f.classe), isoDate(f.naissance), tc(clean(f.lieu)), f.sexe === 'M' ? 'M' : 'F',
+  const mask = sortActs(f.acts || []).map(a => txt(a, 40).replace(/;/g, ',')).join(' ; ');
+  return JSON.stringify(['ASI2', clean(f.nom), clean(f.prenom), clean(f.classe), isoDate(f.naissance), tc(clean(f.lieu)), f.sexe === 'M' ? 'M' : 'F',
     QUAL[f.qualite] || 'T', clean(f.respNom), clean(f.tel).replace(/[^\d+]/g, ''), clean(f.mail).toLowerCase(), mask,
-    f.compet === '1' ? 1 : 0, f.handi === '1' ? 1 : 0, clean(f.club), f.droitImage === '1' ? 1 : 0, clean(f.licence), clean(f.jo), isoDate(dateSig) || today()]);
+    f.compet === '1' ? 1 : 0, f.handi === '1' ? 1 : f.handi === '2' ? 2 : 0, clean(f.club), f.droitImage === '1' ? 1 : 0, clean(f.licence), clean(f.jo), isoDate(dateSig) || today()]);
 }
 function decodeInscription(text) {
   let a; try { a = JSON.parse(String(text).trim()); } catch (e) { throw new Error('Code non reconnu.'); }
-  if (!Array.isArray(a) || a[0] !== 'ASI1' || a.length !== 19) throw new Error('Code non reconnu (version ou format inattendu).');
+  if (!Array.isArray(a) || (a[0] !== 'ASI1' && a[0] !== 'ASI2') || a.length !== 19) throw new Error('Code non reconnu (version ou format inattendu).');
   const [, nom, prenom, classe, naiss, lieu, sx, q, rn, tel, mail, mask, comp, hand, club, droit, lic, jo, ds] = a;
   if (!clean(nom) || !clean(prenom)) throw new Error('Code incomplet : nom ou prénom manquant.');
   const f = {
     nom: clean(nom), prenom: clean(prenom), classe: clean(classe), naissance: naiss, lieu, sexe: sx === 'M' ? 'M' : 'F',
-    qualite: QUAL_INV[q] || 'Tuteur ou tutrice', respNom: rn, tel, mail, acts: ACT_AS.filter((x, i) => (mask >> i) & 1),
-    compet: comp ? '1' : '0', handi: hand ? '1' : '0', club, droitImage: droit ? '1' : '0', autor: true, consentDonnees: true, consentAssurance: true,
+    qualite: QUAL_INV[q] || 'Tuteur ou tutrice', respNom: rn, tel, mail, acts: a[0] === 'ASI2' ? actsFromString(mask).map(x => txt(x, 40)) : ACT_AS.filter((x, i) => (mask >> i) & 1),
+    compet: comp ? '1' : '0', handi: +hand === 1 ? '1' : +hand === 2 ? '2' : '0', club, droitImage: droit ? '1' : '0', autor: true, consentDonnees: true, consentAssurance: true,
     licence: lic, jo, sigEleve: true, sigResp: true
   };
   return { nom: f.nom, prenom: f.prenom, classe: f.classe, record: toRecord(f, ds), source: 'qr' };
@@ -221,7 +245,7 @@ function drawCard(ctx, W, H, d, imgs) {
   if (imgs && imgs.logo && imgs.logo.width) { const lh = 142 * S, lw = lh * imgs.logo.width / imgs.logo.height; ctx.drawImage(imgs.logo, 12 * S, 8 * S, lw, lh); tx = 12 * S + lw + 20 * S; }
   ctx.fillStyle = '#1c1a15'; ctx.textBaseline = 'alphabetic';
   fit('ASSOCIATION SPORTIVE', W - tx - 24 * S, 46 * S, '900'); ctx.fillText('ASSOCIATION SPORTIVE', tx, 66 * S);
-  fit(ETAB + ' · ' + VILLE, W - tx - 24 * S, 26 * S, '600'); ctx.fillText(ETAB + ' · ' + VILLE, tx, 104 * S);
+  const lieu = [ETAB, VILLE].filter(Boolean).join(' · '); if (lieu) { fit(lieu, W - tx - 24 * S, 26 * S, '600'); ctx.fillText(lieu, tx, 104 * S); }
   fit('Carte d’adhérent ' + SAISON, W - tx - 24 * S, 28 * S, '800'); ctx.fillText('Carte d’adhérent ' + SAISON, tx, 142 * S);
   const qrBox = 300 * S, qx = W - qrBox - 34 * S, qy = 192 * S, maxW = qx - 52 * S;
   const nom = clean(d.nom).toUpperCase(), pre = tc(clean(d.prenom));
@@ -242,8 +266,9 @@ function cardCanvas(doc, d, imgs, W) {
   drawCard(c.getContext('2d'), c.width, c.height, Object.assign({}, d, { qr: makeQR(cardPayload(d), 'M') }), imgs); return c;
 }
 
-const API = { SAISON, ETAB, VILLE, ACT_AS, ACT_ID, norm, tc, clean, hash, isoDate, frDate, today, telOk, mailOk, naissanceOk, manques,
+const API = { ACT_DEFAUT, LOGOS, saisonCourante, setConfig, cfgClean, cfgToParam, cfgFromParam, ACT_ID, norm, tc, clean, hash, isoDate, frDate, today, telOk, mailOk, naissanceOk, manques,
   toRecord, actsFromString, sortActs, encodeInscription, decodeInscription, fromSheet, cardId, cardPayload, parseCardPayload, typeCode,
   lev, matchEleve, setQR, makeQR, drawQR, drawCard, cardCanvas };
+['SAISON', 'ETAB', 'VILLE', 'LOGO', 'ACT_AS'].forEach(k => Object.defineProperty(API, k, { enumerable: true, get: () => ({ SAISON, ETAB, VILLE, LOGO, ACT_AS })[k] }));
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.ASCORE = API;
 })(typeof window !== 'undefined' ? window : globalThis);
