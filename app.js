@@ -1,7 +1,7 @@
 /* Mon AS — application élève : fiche d'inscription, signatures, carte d'AS. 100 % local. */
 (function(){
 'use strict';
-const A=window.ASCORE, $=id=>document.getElementById(id), DK='mon_as_brouillon_v1';
+const A=window.ASCORE, $=id=>document.getElementById(id), DK='mon_as_brouillon_v1',FK='mon_as_final_v1';
 const form=$('form'), sig={sigEleve:null,sigResp:null};
 let logo=null;
 $('ver').textContent='v'+(window.VERSION||'');
@@ -20,13 +20,14 @@ function ecrire(f){['nom','prenom','classe','naissance','lieu','qualite','respNo
  ['sexe','compet','handi','droitImage'].forEach(n=>{const r=form.querySelector(`input[name=${n}][value="${f[n]}"]`);if(r)r.checked=true});
  form.querySelectorAll('input[name=act]').forEach(c=>{c.checked=(f.acts||[]).includes(c.value)});
  ['autor','consentDonnees','consentAssurance'].forEach(k=>{$(k).checked=!!f[k]});
- ['sigEleve','sigResp'].forEach(k=>{if(f[k]){const i=new Image();i.onload=()=>{const c=$(k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);sig[k]=f[k]};i.src=f[k]}})}
+ ['sigEleve','sigResp'].forEach(k=>{if(f[k]){sig[k]=f[k];const i=new Image();i.onload=()=>{const c=$(k);c.getContext('2d').drawImage(i,0,0,c.width,c.height)};i.src=f[k]}})}
 
 function sauver(){try{localStorage.setItem(DK,JSON.stringify(lire()))}catch(e){}}
 function etat(){const m=A.manques(lire());
- $('barTx').innerHTML=m.length?`${m.length} élément${m.length>1?'s':''} à compléter<small>La carte sera créée quand tout sera rempli et signé</small>`:'✅ Tout est complet<small>Tu peux créer ta carte</small>';
+ $('barTx').innerHTML=cur?'✅ Inscription prête<small>Montre ton QR code à ton professeur</small>':m.length?`${m.length} élément${m.length>1?'s':''} à compléter<small>💾 Brouillon enregistré sur cet appareil — tu peux reprendre plus tard</small>`:'✅ Tout est complet<small>Tu peux créer ta carte</small>';
  return m}
-function maj(){sauver();etat();form.querySelectorAll('.mq').forEach(e=>e.classList.remove('mq'))}
+function majBar(){etat();$('go').textContent=cur?'📲 Montrer mon QR':'Créer ma carte'}
+function maj(){sauver();if(cur)cache();etat();form.querySelectorAll('.mq').forEach(e=>e.classList.remove('mq'))}
 form.addEventListener('input',maj);form.addEventListener('change',maj);
 
 /* ---- Signatures ---- */
@@ -50,14 +51,25 @@ async function creer(){
  if(m.length){$('manqueList').innerHTML=m.map(x=>`<li>• ${x.label}</li>`).join('');$('dlgManque').showModal();
   m.forEach(x=>{const el=form.querySelector(`[data-k="${x.k}"]`);if(el)el.classList.add('mq')});
   const first=form.querySelector('.mq');if(first)first.scrollIntoView({block:'center'});return}
- const ds=A.today(),d={nom:f.nom,prenom:f.prenom,classe:f.classe,licence:f.licence,jo:f.jo};
+ const ds=A.today();
  try{await ELEVE.definir({nom:A.clean(f.nom),prenom:A.clean(f.prenom),classe:A.clean(f.classe)});
   await ELEVE.enregistrerChamps(A.ACT_ID,A.toRecord(f,ds))}catch(e){$('msg').textContent='Enregistrement local impossible : '+e.message}
- cur={f,d,ds};
+ try{localStorage.setItem(FK,ds)}catch(e){}
+ montre(f,ds);$('resultat').scrollIntoView({behavior:'smooth'})}
+function montre(f,ds){
+ const d={nom:f.nom,prenom:f.prenom,classe:f.classe,licence:f.licence,jo:f.jo};cur={f,d,ds};
  const cv=A.cardCanvas(document,d,{logo},1011),dst=$('cardcv');dst.width=cv.width;dst.height=cv.height;dst.getContext('2d').drawImage(cv,0,0);
- const q=A.makeQR(A.encodeInscription(f,ds),'M'),qc=$('qrIns');qc.width=qc.height=560;const x=qc.getContext('2d');A.drawQR(x,q,0,0,560);
- $('resultat').hidden=false;$('resultat').scrollIntoView({behavior:'smooth'})}
-$('go').onclick=creer;$('manqueOk').onclick=()=>$('dlgManque').close();$('go').disabled=false;
+ const q=A.makeQR(A.encodeInscription(f,ds),'M'),qc=$('qrIns');qc.width=qc.height=560;A.drawQR(qc.getContext('2d'),q,0,0,560);
+ $('resultat').hidden=false;majBar()}
+function cache(){cur=null;$('resultat').hidden=true;try{localStorage.removeItem(FK)}catch(e){}majBar()}
+/* ---- QR plein écran pour le professeur ---- */
+let wake=null;
+async function plein(){if(!cur)return;const c=$('qrBig');c.width=c.height=900;A.drawQR(c.getContext('2d'),A.makeQR(A.encodeInscription(cur.f,cur.ds),'M'),0,0,900);
+ $('qrNom').textContent=A.tc(cur.f.prenom)+' '+cur.f.nom.toUpperCase()+' · '+cur.f.classe;$('dQr').showModal();
+ try{wake=await navigator.wakeLock.request('screen')}catch(e){}}
+$('qrClose').onclick=()=>$('dQr').close();$('dQr').addEventListener('close',()=>{try{wake&&wake.release()}catch(e){}wake=null});
+$('qrFull').onclick=plein;
+$('go').onclick=()=>cur?plein():creer();$('manqueOk').onclick=()=>$('dlgManque').close();$('go').disabled=false;
 
 $('dlPng').onclick=()=>{if(cur)$('cardcv').toBlob(b=>dl(b,nomFichier(cur.f)+'_carte.png'))};
 $('dlCartePdf').onclick=()=>{if(!cur)return;const P=new jspdf.jsPDF({unit:'mm',format:'a4'});
@@ -79,10 +91,11 @@ $('dlDossier').onclick=()=>{if(!cur)return;const f=cur.f,P=new jspdf.jsPDF({unit
  P.save(nomFichier(f)+'_dossier.pdf')};
 
 $('efface').onclick=async()=>{if(!confirm('Effacer toutes tes données de cet appareil ?'))return;
- try{localStorage.removeItem(DK)}catch(e){}try{await ELEVE.supprimer()}catch(e){}location.reload()};
+ try{localStorage.removeItem(DK);localStorage.removeItem(FK)}catch(e){}try{await ELEVE.supprimer()}catch(e){}location.reload()};
 
 /* ---- Démarrage ---- */
 try{const s=localStorage.getItem(DK);if(s)ecrire(JSON.parse(s))}catch(e){}
+try{const ds=localStorage.getItem(FK);if(ds&&!A.manques(lire()).length)montre(lire(),ds)}catch(e){}
 etat();
 if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 window.__monAS={lire,ecrire,creer,sig};

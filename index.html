@@ -92,29 +92,36 @@
   </section>
 </form>
 
-<section class="card" id="resultat" hidden>
-  <h2>🎉 Ma carte d'AS</h2>
+<div id="resultat" hidden>
+<section class="card">
+  <h2>📲 Mon inscription</h2>
+  <p class="hint" style="margin-top:0"><b>À montrer une seule fois au professeur</b> pour qu'il enregistre ton inscription. Ce n'est pas ta carte d'AS.</p>
+  <div class="row" style="margin-top:6px"><button class="btn" id="qrFull" type="button">📲 Afficher mon QR d'inscription en grand</button></div>
+  <div class="qrbox" style="margin-top:12px"><canvas id="qrIns"></canvas></div>
+  <div class="row">
+    <button class="btn b" id="dlXlsx">Fichier .xlsx</button>
+    <button class="btn r" id="dlDossier">Dossier signé (PDF)</button>
+  </div>
+  <p class="hint">Pas de QR possible ? Envoie le fichier .xlsx au professeur. Le dossier PDF contient les signatures et l'adresse : il peut être imprimé et remis en papier.</p>
+  <p id="msg" class="hint"></p>
+</section>
+<section class="card">
+  <h2>🪪 Ma carte d'AS</h2>
+  <p class="hint" style="margin-top:0"><b>À présenter à chaque séance</b> : le QR de la carte sert à faire l'appel.</p>
   <canvas id="cardcv" class="cardcv"></canvas>
   <div class="row">
     <button class="btn" id="dlPng">Carte (image)</button>
     <button class="btn b" id="dlCartePdf">Carte (PDF)</button>
   </div>
-  <h2 style="margin-top:22px">📲 Remettre au professeur</h2>
-  <p class="hint">Montre ce QR code à ton professeur : il le scanne et ton inscription est enregistrée. Sinon, envoie-lui le fichier .xlsx.</p>
-  <div class="qrbox"><canvas id="qrIns"></canvas></div>
-  <div class="row">
-    <button class="btn" id="dlXlsx">Fichier .xlsx</button>
-    <button class="btn b" id="dlDossier">Dossier signé (PDF)</button>
-  </div>
-  <p class="hint">Le dossier PDF contient les signatures et l'adresse : il peut être imprimé et remis en papier.</p>
-  <p id="msg" class="hint"></p>
 </section>
+</div>
 <div class="row" style="justify-content:center"><button class="btn r sm" id="efface">Effacer mes données de cet appareil</button></div>
 </main>
 <footer class="foot">Données conservées uniquement sur cet appareil · <a href="confidentialite.html">Confidentialité</a> · <span id="ver"></span></footer>
 
 <div class="bar" id="bar"><div class="tx" id="barTx">…</div><button class="btn" id="go" disabled>Créer ma carte</button></div>
 
+<dialog id="dQr" class="qrdlg"><div class="qrfull"><canvas id="qrBig"></canvas><div class="qrnom" id="qrNom"></div><p class="hint">Monte la luminosité de l'écran au maximum et tiens ton téléphone à 15-20 cm de la caméra du professeur.</p><button class="btn" id="qrClose" type="button">Fermer</button></div></dialog>
 <dialog id="dlgManque"><h3>Il reste à compléter</h3><ul id="manqueList"></ul><div class="row"><button class="btn" id="manqueOk">OK</button></div></dialog>
 
 <script src="lib/qrcode-generator-1.4.4.js"></script>
