@@ -7,7 +7,7 @@ let logo=null;
 $('ver').textContent='v'+(window.VERSION||'');
 $('tx-droit').textContent=TEXTES.droitImage.texte;$('tx-donnees').textContent=TEXTES.donnees.texte;$('tx-assurance').textContent=TEXTES.assurance.texte;
 $('chips').innerHTML=A.ACT_AS.map((a,i)=>`<label class="chip"><input type="checkbox" name="act" value="${a}"><span>${a}</span></label>`).join('');
-const img=new Image();img.onload=()=>{logo=img};img.src='img/logo-as.png';
+const img=new Image();img.onload=()=>{logo=img;if(cur)montre(cur.f,cur.ds)};img.src='img/logo-as.png';
 const val=id=>$(id).value, radio=n=>{const r=form.querySelector(`input[name=${n}]:checked`);return r?r.value:''};
 
 function lire(){return{nom:val('nom'),prenom:val('prenom'),classe:val('classe'),naissance:val('naissance'),lieu:val('lieu'),sexe:radio('sexe'),
@@ -23,13 +23,15 @@ function ecrire(f){['nom','prenom','classe','naissance','lieu','qualite','respNo
  ['sigEleve','sigResp'].forEach(k=>{if(f[k]){sig[k]=f[k];const i=new Image();i.onload=()=>{const c=$(k);c.getContext('2d').drawImage(i,0,0,c.width,c.height)};i.src=f[k]}})}
 
 function sauver(){try{localStorage.setItem(DK,JSON.stringify(lire()))}catch(e){}}
+let cur=null,vue='vue-ins';
 function etat(){const m=A.manques(lire());
- $('barTx').innerHTML=cur?'✅ Inscription prête<small>Montre ton QR code à ton professeur</small>':m.length?`${m.length} élément${m.length>1?'s':''} à compléter<small>💾 Brouillon enregistré sur cet appareil — tu peux reprendre plus tard</small>`:'✅ Tout est complet<small>Tu peux créer ta carte</small>';
+ $('barTx').innerHTML=cur?'✅ Inscription enregistrée<small>Montre ton QR code à ton professeur</small>':m.length?`${m.length} élément${m.length>1?'s':''} à compléter<small>💾 Brouillon enregistré sur cet appareil : tu peux reprendre plus tard</small>`:'✅ Tout est complet<small>Tu peux enregistrer ton inscription</small>';
+ $('go').textContent=cur?'📲 Montrer mon QR code':'Enregistrer mon inscription';
+ $('bar').hidden=vue!=='vue-ins';
  return m}
-function majBar(){etat();$('go').textContent=cur?'📲 Montrer mon QR':'Créer ma carte'}
-function maj(){sauver();if(cur)cache();etat();form.querySelectorAll('.mq').forEach(e=>e.classList.remove('mq'))}
+function maj(){sauver();etat();form.querySelectorAll('.mq').forEach(e=>e.classList.remove('mq'))}
 form.addEventListener('input',maj);form.addEventListener('change',maj);
-
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{vue=b.dataset.v;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));['vue-ins','vue-carte'].forEach(v=>$(v).hidden=v!==vue);etat();window.scrollTo(0,0)});
 /* ---- Signatures ---- */
 function pad(id){const c=$(id),x=c.getContext('2d');let on=false,n=0;
  x.lineWidth=3.2;x.lineCap=x.lineJoin='round';x.strokeStyle='#14151a';
@@ -42,39 +44,61 @@ function pad(id){const c=$(id),x=c.getContext('2d');let on=false,n=0;
 ['sigEleve','sigResp'].forEach(pad);
 document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const id=b.dataset.clear,c=$(id);c.getContext('2d').clearRect(0,0,c.width,c.height);sig[id]=null;maj()});
 
-/* ---- Création de la carte ---- */
+
+/* ---- Cotisation en ligne (lien saisi par le professeur) ---- */
+const CK='mon_as_cotis_v1';
+function cotisOk(c){return c&&typeof c.u==='string'&&/^https:\/\/[^\s]+$/i.test(c.u)}
+function cotisLire(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');return cotisOk(c)?c:null}catch(e){return null}}
+function cotisMaj(){const c=cotisLire(),p=$('pay'),h=$('payHint');p.hidden=!c;h.hidden=!c;
+ if(c){p.href=c.u;p.textContent='💳 Payer ma cotisation en ligne'+(c.m?' ('+c.m+')':'');h.textContent='Le paiement se fait sur un site sécurisé extérieur à cette application. Garde ta confirmation de paiement.'}}
+async function cotisInit(){
+ let par=null;try{par=new URLSearchParams(location.search).get('cotis')}catch(e){}
+ if(par){try{const o=JSON.parse(decodeURIComponent(escape(atob(par.replace(/-/g,'+').replace(/_/g,'/')))));const c={u:String(o.u||''),m:String(o.m||'').slice(0,30)};
+  if(cotisOk(c))localStorage.setItem(CK,JSON.stringify(c));history.replaceState(null,'',location.pathname)}catch(e){}}
+ else{try{const r=await fetch('config.json',{cache:'no-store'});if(r.ok){const j=await r.json(),c=j&&j.cotisation;if(c&&cotisOk({u:c.url}))localStorage.setItem(CK,JSON.stringify({u:c.url,m:String(c.montant||'').slice(0,30)}))}}catch(e){}}
+ cotisMaj()}
+
+/* ---- Enregistrement de l'inscription ---- */
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
 const nomFichier=f=>'AS_'+A.norm(f.nom).toUpperCase()+'_'+A.tc(f.prenom).replace(/\s/g,'');
-let cur=null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function creer(){
  const f=lire(),m=A.manques(f);
  if(m.length){$('manqueList').innerHTML=m.map(x=>`<li>• ${x.label}</li>`).join('');$('dlgManque').showModal();
   m.forEach(x=>{const el=form.querySelector(`[data-k="${x.k}"]`);if(el)el.classList.add('mq')});
   const first=form.querySelector('.mq');if(first)first.scrollIntoView({block:'center'});return}
+ if(!confirm('Enregistrer ton inscription ? Tu ne pourras plus modifier ta fiche ensuite.'))return;
  const ds=A.today();
  try{await ELEVE.definir({nom:A.clean(f.nom),prenom:A.clean(f.prenom),classe:A.clean(f.classe)});
   await ELEVE.enregistrerChamps(A.ACT_ID,A.toRecord(f,ds))}catch(e){$('msg').textContent='Enregistrement local impossible : '+e.message}
- try{localStorage.setItem(FK,ds)}catch(e){}
- montre(f,ds);$('resultat').scrollIntoView({behavior:'smooth'})}
+ try{localStorage.setItem(FK,ds);localStorage.setItem(DK,JSON.stringify(f))}catch(e){}
+ montre(f,ds);window.scrollTo(0,0)}
+function resume(f){
+ const o=v=>v==='1'?'Oui':v==='0'?'Non':'';
+ const kv=[['Nom',f.nom.toUpperCase()],['Prénom',A.tc(f.prenom)],['Classe',f.classe],['Né(e) le',A.frDate(f.naissance)+' à '+A.tc(f.lieu)],['Sexe',f.sexe==='M'?'Garçon':'Fille'],
+  ['Responsable',f.respNom+' ('+f.qualite+')'],['Téléphone',f.tel],['E-mail',f.mail||'—'],['Adresse',f.adresse],
+  ['Activités',A.sortActs(f.acts).join(', ')],['Compétitions UNSS',o(f.compet)],['Sport partagé / handisport',o(f.handi)],['Club',f.club||'—'],
+  ['Droit à l\u2019image',f.droitImage==='1'?'Autorisé':'Non autorisé'],['Licence UNSS',f.licence||'en attente'],['Jeune officiel',f.jo||'—']];
+ $('resume').innerHTML=kv.map(([k,v])=>`<b>${esc(k)}</b><span>${esc(v)}</span>`).join('');
+ $('resumeSig').innerHTML=`<figure><img alt="Signature de l'élève" src="${f.sigEleve}"><figcaption>Signature de l'élève</figcaption></figure><figure><img alt="Signature du responsable" src="${f.sigResp}"><figcaption>Signature du responsable</figcaption></figure>`}
 function montre(f,ds){
  const d={nom:f.nom,prenom:f.prenom,classe:f.classe,licence:f.licence,jo:f.jo};cur={f,d,ds};
+ $('saisie').hidden=true;$('fait').hidden=false;$('faitDate').textContent='Inscription enregistrée le '+A.frDate(ds)+'.';resume(f);
  const cv=A.cardCanvas(document,d,{logo},1011),dst=$('cardcv');dst.width=cv.width;dst.height=cv.height;dst.getContext('2d').drawImage(cv,0,0);
- const q=A.makeQR(A.encodeInscription(f,ds),'M'),qc=$('qrIns');qc.width=qc.height=560;A.drawQR(qc.getContext('2d'),q,0,0,560);
- $('resultat').hidden=false;majBar()}
-function cache(){cur=null;$('resultat').hidden=true;try{localStorage.removeItem(FK)}catch(e){}majBar()}
+ $('carteVide').hidden=true;$('carteOk').hidden=false;
+ const qc=$('qrIns');qc.width=qc.height=560;A.drawQR(qc.getContext('2d'),A.makeQR(A.encodeInscription(f,ds),'M'),0,0,560);
+ cotisMaj();etat()}
 /* ---- QR plein écran pour le professeur ---- */
 let wake=null;
 async function plein(){if(!cur)return;const c=$('qrBig');c.width=c.height=900;A.drawQR(c.getContext('2d'),A.makeQR(A.encodeInscription(cur.f,cur.ds),'M'),0,0,900);
  $('qrNom').textContent=A.tc(cur.f.prenom)+' '+cur.f.nom.toUpperCase()+' · '+cur.f.classe;$('dQr').showModal();
  try{wake=await navigator.wakeLock.request('screen')}catch(e){}}
 $('qrClose').onclick=()=>$('dQr').close();$('dQr').addEventListener('close',()=>{try{wake&&wake.release()}catch(e){}wake=null});
-$('qrFull').onclick=plein;
-$('go').onclick=()=>cur?plein():creer();$('manqueOk').onclick=()=>$('dlgManque').close();$('go').disabled=false;
+$('go').onclick=()=>cur?plein():creer();$('manqueOk').onclick=()=>$('dlgManque').close();
 
 $('dlPng').onclick=()=>{if(cur)$('cardcv').toBlob(b=>dl(b,nomFichier(cur.f)+'_carte.png'))};
 $('dlCartePdf').onclick=()=>{if(!cur)return;const P=new jspdf.jsPDF({unit:'mm',format:'a4'});
  P.addImage($('cardcv').toDataURL('image/png'),'PNG',(210-85.6)/2,30,85.6,54);P.setFontSize(10);P.text('Découper suivant le contour.',105,92,{align:'center'});P.save(nomFichier(cur.f)+'_carte.pdf')};
-$('dlXlsx').onclick=async()=>{try{await ELEVE.exporter([A.ACT_ID])}catch(e){$('msg').textContent=e.message}};
 const ascii=s=>String(s==null?'':s).replace(/[’‘]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-');
 $('dlDossier').onclick=()=>{if(!cur)return;const f=cur.f,P=new jspdf.jsPDF({unit:'mm',format:'a4'});let y=20;
  P.setFontSize(16);P.setFont('helvetica','bold');P.text(ascii("Fiche d'inscription "+A.SAISON+" - Association Sportive"),105,y,{align:'center'});y+=7;
@@ -90,13 +114,14 @@ $('dlDossier').onclick=()=>{if(!cur)return;const f=cur.f,P=new jspdf.jsPDF({unit
  P.setFont('helvetica','normal');P.setFontSize(8);P.text(ascii('Signé électroniquement le '+A.frDate(cur.ds)+' sur l\'application Mon AS.'),20,y);
  P.save(nomFichier(f)+'_dossier.pdf')};
 
-$('efface').onclick=async()=>{if(!confirm('Effacer toutes tes données de cet appareil ?'))return;
+
+$('efface').onclick=async()=>{if(!confirm('Effacer toutes tes données de cet appareil ? Ton inscription devra être refaite.'))return;
  try{localStorage.removeItem(DK);localStorage.removeItem(FK)}catch(e){}try{await ELEVE.supprimer()}catch(e){}location.reload()};
 
 /* ---- Démarrage ---- */
 try{const s=localStorage.getItem(DK);if(s)ecrire(JSON.parse(s))}catch(e){}
 try{const ds=localStorage.getItem(FK);if(ds&&!A.manques(lire()).length)montre(lire(),ds)}catch(e){}
-etat();
+etat();cotisInit();
 if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 window.__monAS={lire,ecrire,creer,sig};
 })();

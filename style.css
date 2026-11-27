@@ -57,3 +57,14 @@ dialog li button{width:100%;text-align:left;border:1px solid var(--bd);backgroun
 .qrdlg{max-width:none;width:100%;height:100%;max-height:none;border:0;border-radius:0;padding:0;background:#fff;color:#14151a}
 .qrfull{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center}
 .qrfull canvas{width:min(92vw,68vh);height:min(92vw,68vh);background:#fff}.qrnom{font-weight:900;font-size:1.2rem}.qrfull .hint{color:#555;max-width:420px}
+
+/* onglets du bas */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#16204a,#0d1434);border-top:2px solid var(--or1);box-shadow:0 -8px 24px #000a}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--bd);border-radius:14px;background:rgba(255,255,255,.07);color:var(--tx);font:inherit;font-weight:800;font-size:.8rem;padding:8px 2px 7px;cursor:pointer;letter-spacing:.02em;position:relative}
+.tabs button i{font-style:normal;font-size:1.3rem;line-height:1}
+.tabs button.on{background:linear-gradient(135deg,var(--or1),var(--or2));color:#14151a;border-color:transparent;box-shadow:0 4px 14px #ff6a0066}
+.tabs .nb{position:absolute;top:2px;right:6px;display:inline-block;min-width:18px;padding:0 5px;margin:0;border-radius:9px;background:var(--ko);color:#14151a;font-size:.7rem;font-weight:900}
+.bar{bottom:calc(66px + env(safe-area-inset-bottom));border-top:1px solid var(--bd)}
+body{padding-bottom:170px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem;margin:6px 0}.kv b{color:var(--mut);font-weight:700}
+.sigs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}.sigs figure{margin:0;flex:1;min-width:130px}.sigs img{display:block;width:100%;background:#fff;border-radius:10px;border:1px solid var(--bd)}.sigs figcaption{font-size:.72rem;color:var(--mut);margin-top:3px}
