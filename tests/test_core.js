@@ -27,7 +27,9 @@ t('aucune adresse ni image de signature dans l’enregistrement',()=>{const s=JS
 console.log('QR « inscription »');
 const code=A.encodeInscription(f,'2026-11-27');
 t('taille du code raisonnable (<400 octets)',()=>{const n=Buffer.byteLength(code);console.log('      →',n,'octets');assert(n<400)});
-t('aller-retour sans perte',()=>{const d=A.decodeInscription(code);assert.strictEqual(d.nom,'Dupont');assert.deepStrictEqual(d.record,rec)});
+t('aller-retour sans perte (format JSON ASI2, toujours lu)',()=>{const j=JSON.stringify(['ASI2',f.nom,f.prenom,f.classe,f.naissance,f.lieu,'F','M',f.respNom,'0612345678',f.mail.toLowerCase(),'Badminton ; Futsal ; La lycéenne',1,0,'',1,'','',A.today()]);
+ const d=A.decodeInscription(j);assert.strictEqual(d.nom,'Dupont');assert.strictEqual(d.record.Nom_responsable,f.respNom);assert.strictEqual(d.record.Mail_responsable,f.mail.toLowerCase())});
+t('code ASI3 : identité, naissance et téléphone conservés',()=>{const d=A.decodeInscription(code);assert.strictEqual(d.nom,'Dupont');assert.strictEqual(d.record.Naissance,f.naissance);assert.strictEqual(d.record.Telephone_responsable,'0612345678')});
 t('le code ne contient ni adresse ni signature',()=>assert(!/Écoles|data:/.test(code)));
 t('code inconnu rejeté',()=>{assert.throws(()=>A.decodeInscription('bonjour'));assert.throws(()=>A.decodeInscription('["ASI2",1]'))});
 t('type de code détecté',()=>{assert.strictEqual(A.typeCode(code),'inscription');assert.strictEqual(A.typeCode('AS|c1|X|Y|2A|'),'carte');assert.strictEqual(A.typeCode('http://x'),null)});
@@ -64,3 +66,27 @@ t('classe différente signalée mais rattaché',()=>{const r=M({nom:'Benali',pre
 t('nom composé avec particule certain',()=>assert.strictEqual(M({nom:'DE LA FONTAINE',prenom:'Jean Pierre',classe:'3PM'}).eleve.id,'4'));
 
 console.log(ok,'tests réussis');
+
+console.log('QR d’inscription compact (ASI3)');
+const big={...f,nom:'Dupont-Lefebvre',prenom:'Marie-Charlotte',classe:'2NDE MELEC',acts:A.ACT_AS.slice(0,6),licence:'123456',club:'FC Amiens Sport',mail:'a.b@gmail.com',respNom:'Anne Dupont-Lefebvre'};
+t('format ASI3 reconnu comme inscription',()=>{const c=A.encodeInscription(big,'2026-11-27');assert(c.startsWith('ASI3|'));assert.strictEqual(A.typeCode(c),'inscription')});
+t('QR nettement moins dense qu’avant (≤ 45 modules)',()=>{const c=A.encodeInscription(big,'2026-11-27');assert(c.length<=100,c.length+' octets');assert(A.makeQR(c,'M').getModuleCount()<=45)});
+t('aller-retour : identité, naissance, activités, téléphone, drapeaux',()=>{const d=A.decodeInscription(A.encodeInscription(big,'2026-11-27')),r=d.record;
+ assert.strictEqual(d.nom,'Dupont-Lefebvre');assert.strictEqual(d.classe,'2NDE MELEC');assert.strictEqual(r.Naissance,'2010-04-12');assert.strictEqual(r.Sexe,'Fille');
+ assert.strictEqual(r.Telephone_responsable,'0612345678');assert.strictEqual(r.Activites,A.sortActs(big.acts).join(' ; '));assert.strictEqual(r.Competitions_UNSS,'Oui');assert.strictEqual(r.Sport_partage,'Non');assert.strictEqual(r.Droit_image,'Oui');assert.strictEqual(r.Licence,'123456');assert.strictEqual(r.Date_signature,'2026-11-27')});
+t('les champs absents du QR n’effacent rien côté professeur (clés non transmises)',()=>{const r=A.decodeInscription(A.encodeInscription(big,'2026-11-27')).record;['Lieu_naissance','Qualite_responsable','Nom_responsable','Mail_responsable','Club'].forEach(k=>assert(!(k in r),k))});
+t('Date_signature reste la première clé (fiche du portail)',()=>assert.strictEqual(Object.keys(A.decodeInscription(A.encodeInscription(big,'2026-11-27')).record)[0],'Date_signature'));
+t('ancien format ASI1 toujours lu',()=>{const old=JSON.stringify(['ASI1','Dupont','Léa','2NDE','2010-04-12','Amiens','F','M','Anne','0612345678','a@b.fr',3,1,0,'',1,'','','2026-11-27']);assert.strictEqual(A.typeCode(old),'inscription');assert.strictEqual(A.decodeInscription(old).record.Mail_responsable,'a@b.fr')});
+t('lecture réelle jsQR à faible résolution (QR de 130 px, flou + bruit)',()=>{
+ // rendu manuel du QR en niveaux de gris, 130 px de large, avec bruit déterministe
+ const q=A.makeQR(A.encodeInscription(big,'2026-11-27'),'M'),n=q.getModuleCount(),px=130,quiet=4,m=px/(n+2*quiet),d=new Uint8ClampedArray(px*px*4);let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+ for(let y=0;y<px;y++)for(let x=0;x<px;x++){const r=Math.floor(y/m)-quiet,c=Math.floor(x/m)-quiet;const dark=r>=0&&c>=0&&r<n&&c<n&&q.isDark(r,c);const v=Math.max(0,Math.min(255,(dark?30:225)+(rnd()-.5)*50));const i=(y*px+x)*4;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255}
+ const res=jsQR(d,px,px);assert(res&&res.data===A.encodeInscription(big,'2026-11-27'))});
+
+t('ASI3 : liste d’activités propre à l’établissement + « ne souhaite pas répondre »',()=>{A.setConfig({acts:['Escalade','Badminton','Futsal']});
+ const c=A.encodeInscription({...big,handi:'2',acts:['Escalade','Futsal']},'2026-11-27'),d=A.decodeInscription(c);A.setConfig({});
+ assert.strictEqual(d.record.Sport_partage,'Ne souhaite pas répondre');assert.strictEqual(d.avertissement,'');assert.strictEqual(d.record.Activites,'Escalade ; Futsal');assert(c.length<=100,c.length+' octets')});
+t('ASI3 : liste d’activités différente → activités non lues, avertissement, rien d’inventé',()=>{A.setConfig({acts:['Escalade','Badminton']});const c=A.encodeInscription({...big,acts:['Escalade']},'2026-11-27');A.setConfig({});
+ const d=A.decodeInscription(c);assert(d.avertissement.length>0);assert(!('Activites' in d.record))});
+t('format JSON ASI2 (version précédente) reconnu par le professeur',()=>{const c=JSON.stringify(['ASI2','Dupont','Léa','2NDE','2010-04-12','Amiens','F','M','Anne','0612345678','a@b.fr','Futsal ; Badminton',1,0,'',1,'','','2026-11-27']);assert.strictEqual(A.typeCode(c),'inscription');assert.strictEqual(A.decodeInscription(c).record.Mail_responsable,'a@b.fr')});
+console.log(ok+' tests réussis (total)');

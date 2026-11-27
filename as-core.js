@@ -128,12 +128,43 @@ function toRecord(f, dateSig) {
    Les signatures et l'adresse n'y figurent JAMAIS (elles restent sur l'appareil de l'élève et dans son PDF signé). */
 const QUAL = { 'Mère': 'M', 'Père': 'P', 'Tuteur ou tutrice': 'T' }, QUAL_INV = { M: 'Mère', P: 'Père', T: 'Tuteur ou tutrice' };
 function encodeInscription(f, dateSig) {
-  const mask = sortActs(f.acts || []).map(a => txt(a, 40).replace(/;/g, ',')).join(' ; ');
-  return JSON.stringify(['ASI2', clean(f.nom), clean(f.prenom), clean(f.classe), isoDate(f.naissance), tc(clean(f.lieu)), f.sexe === 'M' ? 'M' : 'F',
-    QUAL[f.qualite] || 'T', clean(f.respNom), clean(f.tel).replace(/[^\d+]/g, ''), clean(f.mail).toLowerCase(), mask,
-    f.compet === '1' ? 1 : 0, f.handi === '1' ? 1 : f.handi === '2' ? 2 : 0, clean(f.club), f.droitImage === '1' ? 1 : 0, clean(f.licence), clean(f.jo), isoDate(dateSig) || today()]);
+  /* Format compact « ASI3 » (QR peu dense = lecture fiable avec une caméra moyenne) :
+     ASI3|NOM|Prénom|classe|AAAAMMJJ|F/M|téléphone responsable|activités (empreinte de la liste de l'AS . masque base 36)|drapeaux|licence|jeune officiel|AAAAMMJJ
+     drapeaux = compétitions UNSS (1) + 2 × sport partagé (0/1/2) + 8 × droit à l'image.
+     Adresse, signatures, e-mail, club, lieu de naissance et identité du responsable restent dans le dossier PDF signé. */
+  const x = v => clean(v).replace(/\|/g, ' ');
+  const d8 = v => (isoDate(v) || '').replace(/-/g, '');
+  const mask = (f.acts || []).reduce((m, a) => { const i = ACT_AS.indexOf(a); return i < 0 || i > 29 ? m : m | (1 << i); }, 0);
+  const acts = listeId() + '.' + mask.toString(36);
+  const handi = f.handi === '1' ? 1 : f.handi === '2' ? 2 : 0;
+  const flags = (f.compet === '1' ? 1 : 0) + 2 * handi + (f.droitImage === '1' ? 8 : 0);
+  return ['ASI3', x(f.nom), x(f.prenom), x(f.classe), d8(f.naissance), f.sexe === 'M' ? 'M' : 'F', x(f.tel).replace(/[^\d+]/g, ''),
+    acts, flags, x(f.licence), x(f.jo), d8(dateSig || today())].join('|');
+}
+/* Empreinte courte de la liste d'activités de l'AS : le professeur ne lit les activités que si sa liste est la même que celle de l'élève. */
+function listeId() { return hash(ACT_AS.join('|')).slice(0, 3); }
+function actsDe(v) {
+  const [h, m] = String(v || '').split('.');
+  if (h !== listeId()) return null;
+  const mask = parseInt(m, 36) || 0; return ACT_AS.filter((x, i) => i < 30 && (mask >> i) & 1);
+}
+function decodeInscription3(text) {
+  const p = String(text).trim().split('|');
+  if (p[0] !== 'ASI3' || p.length !== 12) throw new Error('Code non reconnu (format inattendu).');
+  const iso = v => /^\d{8}$/.test(v) ? v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6) : '';
+  const fl = parseInt(p[8], 10) || 0;
+  if (!clean(p[1]) || !clean(p[2])) throw new Error('Code incomplet : nom ou prénom manquant.');
+  const f = { nom: clean(p[1]), prenom: clean(p[2]), classe: clean(p[3]), naissance: iso(p[4]), lieu: '', sexe: p[5] === 'M' ? 'M' : 'F', qualite: '', respNom: '',
+    tel: p[6], mail: '', acts: actsDe(p[7]), compet: fl & 1 ? '1' : '0', handi: String(Math.min(2, (fl >> 1) & 3)), club: '',
+    droitImage: fl & 8 ? '1' : '0', autor: true, consentDonnees: true, consentAssurance: true, licence: p[9], jo: p[10], sigEleve: true, sigResp: true };
+  const rec = toRecord(f, iso(p[11])); const listeDiff = f.acts === null;
+  if (listeDiff) delete rec.Activites;
+  ['Lieu_naissance', 'Qualite_responsable', 'Nom_responsable', 'Mail_responsable', 'Club'].forEach(k => delete rec[k]);
+  if (!rec.Licence) delete rec.Licence; if (!rec.Jeune_officiel) delete rec.Jeune_officiel;
+  return { nom: f.nom, prenom: f.prenom, classe: f.classe, record: rec, source: 'qr', avertissement: listeDiff ? 'Liste d\u2019activités différente de la vôtre : activités non lues (voir le dossier PDF).' : '' };
 }
 function decodeInscription(text) {
+  if (String(text).trim().startsWith('ASI3|')) return decodeInscription3(text);
   let a; try { a = JSON.parse(String(text).trim()); } catch (e) { throw new Error('Code non reconnu.'); }
   if (!Array.isArray(a) || (a[0] !== 'ASI1' && a[0] !== 'ASI2') || a.length !== 19) throw new Error('Code non reconnu (version ou format inattendu).');
   const [, nom, prenom, classe, naiss, lieu, sx, q, rn, tel, mail, mask, comp, hand, club, droit, lic, jo, ds] = a;
@@ -165,7 +196,7 @@ function parseCardPayload(t) {
 }
 function typeCode(t) {
   t = String(t || '').trim();
-  if (t.startsWith('["ASI1"')) return 'inscription';
+  if (t.startsWith('["ASI1"') || t.startsWith('["ASI2"') || t.startsWith('ASI3|')) return 'inscription';
   if (t.startsWith('AS|')) return 'carte';
   return null;
 }
