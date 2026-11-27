@@ -114,7 +114,6 @@ async function plein(carte){if(!cur)return;const c=$('qrBig');c.width=c.height=9
 $('qrClose').onclick=()=>$('dQr').close();$('dQr').addEventListener('close',()=>{try{wake&&wake.release()}catch(e){}wake=null});
 $('go').onclick=()=>cur?plein():creer();$('showCarte').onclick=()=>plein(true);$('manqueOk').onclick=()=>$('dlgManque').close();
 
-$('dlPng').onclick=()=>{if(cur)$('cardcv').toBlob(b=>dl(b,nomFichier(cur.f)+'_carte.png'))};
 $('dlCartePdf').onclick=()=>{if(!cur)return;const P=new jspdf.jsPDF({unit:'mm',format:'a4'});
  P.addImage($('cardcv').toDataURL('image/png'),'PNG',(210-85.6)/2,30,85.6,54);P.setFontSize(10);P.text('Découper suivant le contour.',105,92,{align:'center'});P.save(nomFichier(cur.f)+'_carte.pdf')};
 const ascii=s=>String(s==null?'':s).replace(/[’‘]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-');
