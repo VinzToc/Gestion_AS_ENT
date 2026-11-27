@@ -107,11 +107,12 @@ function montre(f,ds){
  cotisMaj();etat()}
 /* ---- QR plein écran pour le professeur ---- */
 let wake=null;
-async function plein(){if(!cur)return;const c=$('qrBig');c.width=c.height=900;A.drawQR(c.getContext('2d'),A.makeQR(A.encodeInscription(cur.f,cur.ds),'M'),0,0,900);
+async function plein(carte){if(!cur)return;const c=$('qrBig');c.width=c.height=900;A.drawQR(c.getContext('2d'),A.makeQR(carte?A.cardPayload(cur.d):A.encodeInscription(cur.f,cur.ds),'M'),0,0,900);
+ $('qrTitre').textContent=carte?'Ma carte d\u2019AS':'Mon inscription';
  $('qrNom').textContent=A.tc(cur.f.prenom)+' '+cur.f.nom.toUpperCase()+' · '+cur.f.classe;$('dQr').showModal();
  try{wake=await navigator.wakeLock.request('screen')}catch(e){}}
 $('qrClose').onclick=()=>$('dQr').close();$('dQr').addEventListener('close',()=>{try{wake&&wake.release()}catch(e){}wake=null});
-$('go').onclick=()=>cur?plein():creer();$('manqueOk').onclick=()=>$('dlgManque').close();
+$('go').onclick=()=>cur?plein():creer();$('showCarte').onclick=()=>plein(true);$('manqueOk').onclick=()=>$('dlgManque').close();
 
 $('dlPng').onclick=()=>{if(cur)$('cardcv').toBlob(b=>dl(b,nomFichier(cur.f)+'_carte.png'))};
 $('dlCartePdf').onclick=()=>{if(!cur)return;const P=new jspdf.jsPDF({unit:'mm',format:'a4'});
